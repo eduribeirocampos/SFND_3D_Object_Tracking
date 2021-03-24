@@ -22,6 +22,21 @@ In this final project, you will implement the missing parts in the schematic. To
 * OpenCV >= 4.1
   * This must be compiled from source using the `-D OPENCV_ENABLE_NONFREE=ON` cmake flag for testing the SIFT and SURF detectors.
   * The OpenCV 4.1.0 source code can be found [here](https://github.com/opencv/opencv/tree/4.1.0)
+
+cmake -D WITH_CUDA=OFF \
+    	-D OPENCV_EXTRA_MODULES_PATH=../../opencv_contrib-4.1.0/modules \
+    	-D WITH_GSTREAMER=OFF \
+    	-D WITH_LIBV4L=ON \
+    	-D BUILD_opencv_python2=OFF \
+    	-D BUILD_opencv_python3=OFF \
+    	-D BUILD_TESTS=OFF \
+    	-D BUILD_PERF_TESTS=OFF \
+    	-D BUILD_EXAMPLES=OFF \
+        -D OPENCV_ENABLE_NONFREE=ON \
+    	-D CMAKE_BUILD_TYPE=RELEASE \
+    	-D CMAKE_INSTALL_PREFIX=/usr/local ..
+     
+     https://forums.developer.nvidia.com/t/process-to-install-opencv-4-1-on-nano/75801
 * gcc/g++ >= 5.4
   * Linux: gcc / g++ is installed by default on most Linux distros
   * Mac: same deal as make - [install Xcode command line tools](https://developer.apple.com/xcode/features/)
