@@ -2,6 +2,12 @@
 #include <fstream>
 #include <sstream>
 #include <iostream>
+#include <iomanip>
+
+#include <stdlib.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <unistd.h>
 
 #include <opencv2/dnn.hpp>
 #include <opencv2/imgproc.hpp>
@@ -9,13 +15,15 @@
 
 #include "objectDetection2D.hpp"
 
+struct stat st4;
 
 using namespace std;
 
 // detects objects in an image using the YOLO library and a set of pre-trained objects from the COCO database;
 // a set of 80 classes is listed in "coco.names" and pre-trained weights are stored in "yolov3.weights"
 void detectObjects(cv::Mat& img, std::vector<BoundingBox>& bBoxes, float confThreshold, float nmsThreshold, 
-                   std::string basePath, std::string classesFile, std::string modelConfiguration, std::string modelWeights, bool bVis)
+                   std::string basePath, std::string classesFile, std::string modelConfiguration,
+                   std::string modelWeights, int imgIndex , bool bVis)
 {
     // load class names from file
     vector<string> classes;
@@ -77,6 +85,7 @@ void detectObjects(cv::Mat& img, std::vector<BoundingBox>& bBoxes, float confThr
                 boxes.push_back(box);
                 classIds.push_back(classId.x);
                 confidences.push_back((float)confidence);
+                
             }
         }
     }
@@ -91,6 +100,7 @@ void detectObjects(cv::Mat& img, std::vector<BoundingBox>& bBoxes, float confThr
         bBox.classID = classIds[*it];
         bBox.confidence = confidences[*it];
         bBox.boxID = (int)bBoxes.size(); // zero-based unique identifier for this bounding box
+        bBox.className = classes[classIds[*it]];
         
         bBoxes.push_back(bBox);
     }
@@ -99,7 +109,8 @@ void detectObjects(cv::Mat& img, std::vector<BoundingBox>& bBoxes, float confThr
     if(bVis) {
         
         cv::Mat visImg = img.clone();
-        for(auto it=bBoxes.begin(); it!=bBoxes.end(); ++it) {
+        for(auto it=bBoxes.begin(); it!=bBoxes.end(); ++it)
+        {
             
             // Draw rectangle displaying the bounding box
             int top, left, width, height;
@@ -118,12 +129,27 @@ void detectObjects(cv::Mat& img, std::vector<BoundingBox>& bBoxes, float confThr
             top = max(top, labelSize.height);
             rectangle(visImg, cv::Point(left, top - round(1.5*labelSize.height)), cv::Point(left + round(1.5*labelSize.width), top + baseLine), cv::Scalar(255, 255, 255), cv::FILLED);
             cv::putText(visImg, label, cv::Point(left, top), cv::FONT_ITALIC, 0.75, cv::Scalar(0,0,0),1);
-            
+
+            string windowName = "Object classification";
+            //cv::namedWindow( windowName, 1 );
+            //cv::imshow( windowName, visImg );
+            //cv::waitKey(); // wait for key to be pressed
+
+            ostringstream saving_name;
+            saving_name << imgIndex <<"_ObjectDetection2D";
+            string file_name = saving_name.str();    
+            string path_file = "../output/Object_Detector_2D/";
+            // creating directory with detector type name
+            const char* p_c_str = path_file.c_str();
+
+            //checking and creating directory
+            if(stat(p_c_str,&st4) != 0)
+            {
+                mkdir( p_c_str , 0777);
+            }
+              
+            imwrite(path_file +"img"+ file_name+".jpg",visImg);
+                   
         }
-        
-        string windowName = "Object classification";
-        cv::namedWindow( windowName, 1 );
-        cv::imshow( windowName, visImg );
-        cv::waitKey(0); // wait for key to be pressed
     }
 }

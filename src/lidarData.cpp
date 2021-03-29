@@ -11,9 +11,11 @@ using namespace std;
 // remove Lidar points based on min. and max distance in X, Y and Z
 void cropLidarPoints(std::vector<LidarPoint> &lidarPoints, float minX, float maxX, float maxY, float minZ, float maxZ, float minR)
 {
-    std::vector<LidarPoint> newLidarPts; 
+    std::vector<LidarPoint> newLidarPts;
+    cout << "The type of lidar point data is: " << lidarPoints[0].x << "," << lidarPoints[0].y << "," << lidarPoints[0].z << endl;
+    cout << "lidar points start size = " << lidarPoints.size() << " | "; 
     for(auto it=lidarPoints.begin(); it!=lidarPoints.end(); ++it) {
-        
+    
        if( (*it).x>=minX && (*it).x<=maxX && (*it).z>=minZ && (*it).z<=maxZ && (*it).z<=0.0 && abs((*it).y)<=maxY && (*it).r>=minR )  // Check if Lidar point is outside of boundaries
        {
            newLidarPts.push_back(*it);
@@ -21,6 +23,7 @@ void cropLidarPoints(std::vector<LidarPoint> &lidarPoints, float minX, float max
     }
 
     lidarPoints = newLidarPts;
+    cout << "lidar points size after crop = " << newLidarPts.size() << endl;
 }
 
 
