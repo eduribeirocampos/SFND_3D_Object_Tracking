@@ -66,14 +66,14 @@ int main(int argc, const char *argv[])
         if (strcmp(argv[1] , "m1" ) == 0)
         {
 
-            string path_file = "../output/Matching_Descriptors/Det_BRISK";
+            string path_file = "../output/Final_TTC/Det_BRISK";
             const char* p_c_str = path_file.c_str();
             //checking and creating directory
             if(stat(p_c_str,&st3) != 0)
             {
                 mkdir( p_c_str , 0777);
             }
-
+            
             Object_Tracking3D("BRISK","SIFT", bVisObjectDetc2D, bVisLidar_ROI, bVisDetect, bVisDescr, bVisMatch, bVisTTC);
         }  
         else 
@@ -86,7 +86,7 @@ int main(int argc, const char *argv[])
                 // creating vector to specify detector and descriptor 
                 detectors_list = {"FAST","ORB"};
                 descriptors_list ={"BRISK","FREAK"};
-                cout << "teste 1" << endl;
+                
             }
             else
             { 
@@ -94,15 +94,10 @@ int main(int argc, const char *argv[])
                 detectors_list = {"SHITOMASI","HARRIS","FAST","BRISK","ORB", "AKAZE", "SIFT"};
                 descriptors_list ={"BRISK","BRIEF","ORB","FREAK","AKAZE","SIFT"};
             }
-            cout << "teste 2" << endl;
-
-            cout << detectors_list.size() << endl;
-
+            
             for (string detect_it :detectors_list)
             {
-                cout << "teste 3" << endl;
-                string path_file = "../output/Matching_Descriptors/Det_"+ detect_it;
-
+                string path_file = "../output/Final_TTC/Det_"+ detect_it;
                 const char* p_c_str = path_file.c_str();
 
                 //checking and creating directory
@@ -110,6 +105,7 @@ int main(int argc, const char *argv[])
                 {
                     mkdir( p_c_str , 0777);
                 }
+
                 for (string descrip_it :descriptors_list)
                 {
                     if ((detect_it == "SIFT")&& (descrip_it == "ORB"))
@@ -119,14 +115,13 @@ int main(int argc, const char *argv[])
                     else if ((detect_it != "AKAZE")&&(descrip_it == "AKAZE"))
                     {
                      // do nothing
-                    }
+                    } 
                     else
                     {
-                        cout << "teste 4" << endl;
+                       
                         Object_Tracking3D(detect_it,descrip_it, bVisObjectDetc2D , bVisLidar_ROI, bVisDetect, bVisDescr, bVisMatch , bVisTTC);
                     }        
                 }// eof descriptors
-                cout << "teste 5" << endl;
 
             }// eof detestor +descriptors       
 
@@ -208,13 +203,21 @@ void Object_Tracking3D(string InDetector , string InDescriptor,bool bVisObjectDe
         // load image from file 
         cv::Mat img = cv::imread(imgFullFilename);
 
-        // push image into data frame buffer
+       // push image into data frame buffer
         DataFrame frame;
         frame.cameraImg = img;
-        dataBuffer.push_back(frame);
+
+        if (dataBuffer.size() >  dataBufferSize)
+        {
+          dataBuffer.erase(dataBuffer.begin());
+          dataBuffer.push_back(frame);    
+        }
+        else
+        {
+          dataBuffer.push_back(frame);
+        }
 
         cout << "#1 : LOAD IMAGE INTO BUFFER done" << endl;
-
 
         /* DETECT & CLASSIFY OBJECTS */
 
@@ -274,7 +277,7 @@ void Object_Tracking3D(string InDetector , string InDescriptor,bool bVisObjectDe
         // extract 2D keypoints from current image
         vector<cv::KeyPoint> keypoints; // create empty feature list for current image
         string detectorType = InDetector;
-        cout << "You Chose the detector = " << InDetector <<endl;
+        //cout << "You Chose the detector = " << InDetector <<endl;
 
         vector<string> otherfetures = {"FAST","BRISK","ORB", "AKAZE", "SIFT"};
 
@@ -320,7 +323,7 @@ void Object_Tracking3D(string InDetector , string InDescriptor,bool bVisObjectDe
             average_size += kp.size;
         }
         average_size /=  keypoints.size();
-        cout << "Keypoints distribution of neighborhood size " << average_size << endl;
+       // cout << "Keypoints distribution of neighborhood size " << average_size << endl;
 
         fstream report;
         report.open("../output/Matching_Descriptors_report.txt", std::ios_base::app);
@@ -418,7 +421,7 @@ void Object_Tracking3D(string InDetector , string InDescriptor,bool bVisObjectDe
             */
 
 
-            cout << "#7 : MATCH KEYPOINT DESCRIPTORS done" << endl
+            cout << "#7 : MATCH KEYPOINT DESCRIPTORS done" << endl;
 
             //****************************************************************************************************
             //                                          MATCHING BOUNDING BOXES
@@ -429,12 +432,13 @@ void Object_Tracking3D(string InDetector , string InDescriptor,bool bVisObjectDe
             // TASK FP.1 -> match list of 3D objects (vector<BoundingBox>) between current and previous frame (implement ->matchBoundingBoxes)
 
             map<int, int> bbBestMatches;
+            
             matchBoundingBoxes(matches, bbBestMatches, *(dataBuffer.end()-2), *(dataBuffer.end()-1)); // associate bounding boxes between current and previous frame using keypoint matches
             //// EOF STUDENT ASSIGNMENT
             // store matches in current data frame
             (dataBuffer.end()-1)->bbMatches = bbBestMatches;
-            cout << " The Size of bbMatches is: ";
-            cout << (dataBuffer.end()-1)->bbMatches.size() << endl;
+            //cout << " The Size of bbMatches is: ";
+            //cout << (dataBuffer.end()-1)->bbMatches.size() << endl;
 
             cout << "#8 : TRACK 3D OBJECT BOUNDING BOXES done" << endl;
 
@@ -488,15 +492,65 @@ void Object_Tracking3D(string InDetector , string InDescriptor,bool bVisObjectDe
                     {
                         cv::Mat visImg = (dataBuffer.end() - 1)->cameraImg.clone();
                         showLidarImgOverlay(visImg, currBB->lidarPoints, P_rect_00, R_rect_00, RT, &visImg);
+                    
                         cv::rectangle(visImg, cv::Point(currBB->roi.x, currBB->roi.y), cv::Point(currBB->roi.x + currBB->roi.width, currBB->roi.y + currBB->roi.height), cv::Scalar(0, 255, 0), 2);
+                        
+                        
+                        //cv::rectangle(visImg, cv::Point(40, 0), cv::Point(850, 50),cv::Scalar (255,255,255), -1);
+
+                        cv::Mat overlay;
+                        double alpha = 0.7;
+
+                        // copy the source image to an overlay
+                        visImg.copyTo(overlay);
+
+                        // draw a filled, yellow rectangle on the overlay copy
+                        cv::rectangle(overlay, cv::Rect(70, 0 , 750, 50), cv::Scalar(0, 125, 125), -1);
+                        // blend the overlay with the source image
+                        cv::addWeighted(overlay, alpha, visImg, 1 - alpha, 0, visImg);
+
                         char str[200];
-                        sprintf(str, "TTC Lidar : %f s, TTC Camera : %f s", ttcLidar, ttcCamera);
-                        putText(visImg, str, cv::Point2f(80, 50), cv::FONT_HERSHEY_PLAIN, 2, cv::Scalar(0,0,255));
-                        string windowName = "Final Results : TTC";
-                        cv::namedWindow(windowName, 4);
-                        cv::imshow(windowName, visImg);
-                        cout << "Press key to continue to next frame" << endl;
-                        cv::waitKey(0);
+                        sprintf(str, "TTC Lidar : %.2f s, TTC Camera : %.2f s", ttcLidar, ttcCamera);
+                        putText(visImg, str, cv::Point2f(80, 30), cv::FONT_HERSHEY_DUPLEX,1, cv::Scalar(255,0,0));
+
+
+                        ostringstream newtext;
+                        newtext << detectorType <<"+"<<descriptorType;
+                        string txtnew = newtext.str();  
+
+                        const char* p_c_str =txtnew.c_str();
+
+                        putText(visImg, p_c_str, cv::Point2f(10, visImg.size().height-10), cv::FONT_HERSHEY_DUPLEX,1, cv::Scalar(255,255,255));
+
+                        //string windowName = "Final Results : TTC";
+                        //cv::namedWindow(windowName, 4);
+                        //cv::imshow(windowName, visImg);
+                        //cout << "Press key to continue to next frame" << endl;
+                        //cv::waitKey(0);
+
+                        ostringstream saving_name;
+                        saving_name <<imgIndex<<"_" <<detectorType <<"_"<<descriptorType;
+                        string file_name = saving_name.str();    
+
+                        ostringstream folder;
+                        folder <<"Det_"<<detectorType<<"_Desc_"<<descriptorType;
+                        string folder_name = folder.str();   
+
+                        string path_file = "../output/Final_TTC/Det_"+detectorType+"/" +folder_name+"/";        
+
+                        // creating directory with detector type name
+                        p_c_str = path_file.c_str();
+
+                        //checking and creating directory
+                        if(stat(p_c_str,&st3) != 0)
+                          mkdir( p_c_str , 0777);
+
+                        imwrite(path_file +"/"+ file_name+".jpg", visImg);  
+
+                        fstream report;
+                        report.open("../output/Final_TTC_report.txt", std::ios_base::app);
+                        report <<detectorType <<","<< descriptorType << ","<<imgIndex<<","<<  ttcLidar <<","<< ttcCamera  <<"\n";
+                        report.close();   
                     }
                     //bVis = false;
                 } // eof TTC computation 

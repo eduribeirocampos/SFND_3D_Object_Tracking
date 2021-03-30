@@ -217,50 +217,50 @@ void show3DObjects(std::vector<BoundingBox> &boundingBoxes, cv::Size worldSize, 
     */
 }
 
-
+//clusterKptMatchesWithROI(*currBB, (dataBuffer.end() - 2)->keypoints, (dataBuffer.end() - 1)->keypoints, (dataBuffer.end() - 1)->kptMatches);
 // associate a given bounding box with the keypoints it contains
 void clusterKptMatchesWithROI(BoundingBox &boundingBox, std::vector<cv::KeyPoint> &kptsPrev, std::vector<cv::KeyPoint> &kptsCurr, std::vector<cv::DMatch> &kptMatches)
 {
-    std::vector<double> euclideanDistance;
-
-    for(auto it = kptMatches.begin(); it != kptMatches.end(); it++)
+    vector<double> DistanceEuclideanCoord;
+    
+    // iterating over matching points in order to create a vector with all distances
+    for(auto it1 = kptMatches.begin(); it1 != kptMatches.end(); it1++)
     {
-        int currKptIndex = (*it).trainIdx;
-        const auto &currKeyPoint = kptsCurr[currKptIndex];
-
-        if(boundingBox.roi.contains(currKeyPoint.pt))
-        {
-            int prevKptIndex = (*it).queryIdx;
-            const auto &prevKeyPoint = kptsPrev[prevKptIndex];
-
-            euclideanDistance.push_back(cv::norm(currKeyPoint.pt - prevKeyPoint.pt));
+        if(boundingBox.roi.contains(kptsCurr.at(it1->trainIdx).pt)) // checking if the keypoint is inside of the bounding box of the current frame.
+        { 
+            // calculating euclidean Distance with opencv function for each matched points
+            DistanceEuclideanCoord.push_back(cv::norm(kptsCurr.at(it1->trainIdx).pt - kptsPrev.at(it1->queryIdx).pt)); 
         }
     }
 
-    int pair_num =  euclideanDistance.size();
-    double euclideanDistanceMean = std::accumulate(euclideanDistance.begin(), euclideanDistance.end(), 0.0) / pair_num;
 
-    for(auto it = kptMatches.begin(); it != kptMatches.end(); it++)
+
+    // calculating mean and standar deviation.
+    double sum = accumulate(begin(DistanceEuclideanCoord), end(DistanceEuclideanCoord), 0.0);
+    double m =  sum / DistanceEuclideanCoord.size();
+    
+    double accum = 0.0;
+    for_each (begin(DistanceEuclideanCoord), std::end(DistanceEuclideanCoord),[&](const double d){accum += (d - m) * (d - m);});
+    double stdev = sqrt(accum / (DistanceEuclideanCoord.size()-1));
+
+    double min_acceptable_value = m - stdev;
+    double max_acceptable_value = m + stdev;
+
+    // removing outliers and pushing the acceptable values to bounding boxes of the current frame.
+    for(auto it2 = kptMatches.begin(); it2 != kptMatches.end(); it2++)
     {
-        int currKptIndex = (*it).trainIdx;
-        const auto &currKeyPoint = kptsCurr[currKptIndex];
+        if(boundingBox.roi.contains(kptsCurr.at(it2->trainIdx).pt)) // checking if the keypoint is inside of the bounding box of the current frame.
+        { 
+            // calculating euclidean Distance with opencv function for each matched points
+            double points_distance = cv::norm(kptsCurr.at(it2->trainIdx).pt - kptsPrev.at(it2->queryIdx).pt);
 
-        if(boundingBox.roi.contains(currKeyPoint.pt))
-        {
-            int prevKptIndex = (*it).queryIdx;
-            const auto &prevKeyPoint = kptsPrev[prevKptIndex];
-
-            double temp = cv::norm(currKeyPoint.pt - prevKeyPoint.pt);
-
-            double euclideanDistanceMean_Augment = euclideanDistanceMean * 1.3;
-            if(temp < euclideanDistanceMean_Augment)
+            if (( points_distance > min_acceptable_value ) && ( points_distance < max_acceptable_value))
             {
-                boundingBox.keypoints.push_back(currKeyPoint);
-                boundingBox.kptMatches.push_back(*it);
+                boundingBox.kptMatches.push_back(*it2);
+                boundingBox.keypoints.push_back(kptsCurr.at(it2->trainIdx));
             }
         }
     }
-    std::cout << "mean value: " << euclideanDistanceMean << "Before filtering there are: " << pair_num << " and after filtering, there are " << boundingBox.keypoints.size() << std::endl;
 }
 
 
@@ -268,22 +268,22 @@ void clusterKptMatchesWithROI(BoundingBox &boundingBox, std::vector<cv::KeyPoint
 
 // Compute time-to-collision (TTC) based on keypoint correspondences in successive images
 void computeTTCCamera(std::vector<cv::KeyPoint> &kptsPrev, std::vector<cv::KeyPoint> &kptsCurr, 
-                      std::vector<cv::DMatch> kptMatches, double frameRate, double &TTC, cv::Mat *visImg)
+                      std::vector<cv::DMatch> kptMatches, double frameRate, double &TTC, cv::Mat *visImg) 
 {
-
+    vector <double> filtered_dist_ratio;
     // compute distance ratios between all matched keypoints
     vector<double> distRatios; // stores the distance ratios for all keypoints between curr. and prev. frame
     for (auto it1 = kptMatches.begin(); it1 != kptMatches.end() - 1; ++it1)
-    { // outer keypoint loop
+    { // outer kpt. loop
 
         // get current keypoint and its matched partner in the prev. frame
         cv::KeyPoint kpOuterCurr = kptsCurr.at(it1->trainIdx);
         cv::KeyPoint kpOuterPrev = kptsPrev.at(it1->queryIdx);
 
         for (auto it2 = kptMatches.begin() + 1; it2 != kptMatches.end(); ++it2)
-        { // inner keypoint loop
+        { // inner kpt.-loop
 
-            double minDist = 100.0; // min. required distance
+            double minDist = 150.0; // min. required distance
 
             // get next keypoint and its matched partner in the prev. frame
             cv::KeyPoint kpInnerCurr = kptsCurr.at(it2->trainIdx);
@@ -300,7 +300,7 @@ void computeTTCCamera(std::vector<cv::KeyPoint> &kptsPrev, std::vector<cv::KeyPo
                 distRatios.push_back(distRatio);
             }
         } // eof inner loop over all matched kpts
-    }// eof outer loop over all matched kpts
+    }     // eof outer loop over all matched kpts
 
     // only continue if list of distance ratios is not empty
     if (distRatios.size() == 0)
@@ -309,11 +309,36 @@ void computeTTCCamera(std::vector<cv::KeyPoint> &kptsPrev, std::vector<cv::KeyPo
         return;
     }
 
-    // compute camera-based TTC from distance ratios
-    double meanDistRatio = std::accumulate(distRatios.begin(), distRatios.end(), 0.0) / distRatios.size();
+    // calculating mean and standar deviation.
+    double sum = accumulate(begin(distRatios), end(distRatios), 0.0);
+    double m =  sum / distRatios.size();
+    
+    double accum = 0.0;
+    for_each (begin(distRatios), std::end(distRatios),[&](const double d){accum += (d - m) * (d - m);});
+    double stdev = sqrt(accum / (distRatios.size()-1));
+
+    double min_acceptable_value = m - stdev;
+    double max_acceptable_value = m + stdev;
+
+    
+    for (int it3 = 0 ; it3 < distRatios.size(); ++it3)
+    {
+        if ((distRatios[it3]>min_acceptable_value) && ( distRatios[it3] < max_acceptable_value))
+        {
+            filtered_dist_ratio.push_back(distRatios[it3]);
+        }
+    }
+
+    std::sort(filtered_dist_ratio.begin(), filtered_dist_ratio.end());
+    long medIndex = floor(filtered_dist_ratio.size() / 2.0);
+    // compute median dist. ratio to remove outlier influence over the Filtered distance ratio vector.
+    double medDistRatio = filtered_dist_ratio.size() % 2 == 0 ? (filtered_dist_ratio[medIndex - 1] + filtered_dist_ratio[medIndex]) / 2.0 : filtered_dist_ratio[medIndex];
+    // compute median dist. ratio to remove outlier influence
+    
 
     double dT = 1 / frameRate;
-    TTC = -dT / (1 - meanDistRatio);
+    TTC = -dT / (1 - medDistRatio);
+    // EOF STUDENT TASK
 }
 
 
@@ -323,157 +348,127 @@ void computeTTCLidar(std::vector<LidarPoint> &lidarPointsPrev,
 {
     // auxiliary variables
     double dT = 1 / frameRate;  // time between two measurements in seconds
-    double laneWidth = 4.0; // assumed width of the ego lane
 
-    // find closest distance to Lidar points within ego lane
-    double minXPrev = 1e9, minXCurr = 1e9;
-    for (auto it = lidarPointsPrev.begin(); it != lidarPointsPrev.end(); ++it)
+    int A_Ycoord = -1;
+    int B_Ycoord = 0;
+    int C_Ycoord = 1;
+    int zone_width = 0.2; // in order to filter the points only in front of the car.   
+
+    float xwmin_prev_zA=1e8;
+    float xwmin_prev_zB=1e8;
+    float xwmin_prev_zC=1e8;
+
+    for (auto it1 = lidarPointsPrev.begin(); it1 != lidarPointsPrev.end(); ++it1)
     {
-        minXPrev = minXPrev > it->x ? it->x : minXPrev;
+        // world coordinates
+        float xw_prev = (*it1).x; // world position in m with x facing forward from sensor
+        float yw_prev = (*it1).y; // world position in m with y facing left from sensor
+        
+        if ((yw_prev > A_Ycoord- zone_width/2) && (yw_prev < A_Ycoord + zone_width/2 ))
+        {
+            xwmin_prev_zA = xwmin_prev_zA<xw_prev ? xwmin_prev_zA : xw_prev;
+        }
+        else if ((yw_prev > B_Ycoord- zone_width/2) && (yw_prev < B_Ycoord + zone_width/2 ))
+        {
+            xwmin_prev_zB = xwmin_prev_zB<xw_prev ? xwmin_prev_zB : xw_prev;
+        }        
+        else if ((yw_prev > C_Ycoord- zone_width/2) && (yw_prev < C_Ycoord + zone_width/2 ))
+        {
+            xwmin_prev_zC = xwmin_prev_zC<xw_prev ? xwmin_prev_zC : xw_prev;
+        }   
     }
 
-    for (auto it = lidarPointsCurr.begin(); it != lidarPointsCurr.end(); ++it)
+
+    float xwmin_curr_zA=1e8;
+    float xwmin_curr_zB=1e8;
+    float xwmin_curr_zC=1e8;
+
+    for (auto it1 = lidarPointsPrev.begin(); it1 != lidarPointsPrev.end(); ++it1)
     {
-        minXCurr = minXCurr > it->x ? it->x : minXCurr;
-    }
+        // world coordinates
+        float xw_curr = (*it1).x; // world position in m with x facing forward from sensor
+        float yw_curr = (*it1).y; // world position in m with y facing left from sensor
+        
+        if ((yw_curr > A_Ycoord- zone_width/2) && (yw_curr < A_Ycoord + zone_width/2 ))
+        {
+            xwmin_curr_zA = xwmin_curr_zA<xw_curr ? xwmin_curr_zA : xw_curr;
+        }
+        else if ((yw_curr > B_Ycoord- zone_width/2) && (yw_curr < B_Ycoord + zone_width/2 ))
+        {
+            xwmin_curr_zB = xwmin_curr_zB<xw_curr ? xwmin_curr_zB : xw_curr;
+        }        
+        else if ((yw_curr > C_Ycoord- zone_width/2) && (yw_curr < C_Ycoord + zone_width/2 ))
+        {
+            xwmin_curr_zC = xwmin_curr_zC<xw_curr ? xwmin_curr_zC : xw_curr;
+        }   
+    }       
+
+    double TTC_A = abs(xwmin_curr_zA * dT / (xwmin_prev_zA - xwmin_curr_zA));
+    double TTC_B = abs(xwmin_curr_zB * dT / (xwmin_prev_zB - xwmin_curr_zB));
+    double TTC_C = abs(xwmin_curr_zB * dT / (xwmin_prev_zB - xwmin_curr_zB));
 
     // compute TTC from both measurements
-    TTC = minXCurr * dT / (minXPrev - minXCurr);
+    TTC = (TTC_A+TTC_B+TTC_C)/3;
 }
 
 
 void matchBoundingBoxes(std::vector<cv::DMatch> &matches, std::map<int, int> &bbBestMatches, DataFrame &prevFrame, DataFrame &currFrame)
 { 
     vector<vector<int>>final_result(currFrame.boundingBoxes.size());
-    
-    // creating variable to store the corresponding boundingbox 
-    int bBox_prev; 
-    int bBox_curr;
+    int bBox_curr = 0;
+    int bBox_prev = 0;
 
-    double gr_conf = 0;
-
-    // loop through every Matching points:
-    for(auto it1 = matches.begin(); it1 != matches.end(); it1++ )
-    {
-        //-----------------------------------------------------------------------------------------------------------
-        //                         correponding the keypoint and Bounding Box on the previous frame
-        //-----------------------------------------------------------------------------------------------------------
-        //Getting pixel coordinates on priveous frame 
+    // iterating over matching points in order to create a vector with all distances
+    for(auto it1 = matches.begin(); it1 != matches.end(); it1++)
+    {   
         double prev_X = prevFrame.keypoints.at(it1->queryIdx).pt.x ;
         double prev_Y = prevFrame.keypoints.at(it1->queryIdx).pt.y ;
-
-        // creating vector to store the bbox that could be the correspondent to take decision on a further step
-        map<int, double > prev_bBox_matching_checking; // 
-
-        // iterating over boundingBoxes to check if the points is inside of box , if have more than 1 box for the same points
-        // the one with the greatest confidence will get the keypoint.
+        double curr_X = currFrame.keypoints.at(it1->trainIdx).pt.x ;
+        double curr_Y = currFrame.keypoints.at(it1->trainIdx).pt.y ;        
         for(auto it2 = prevFrame.boundingBoxes.begin(); it2 != prevFrame.boundingBoxes.end(); it2++)
-        {
-      
+        {        
             //checking x vector.
             if ( prev_X >(*it2).roi.x && prev_X < ((*it2).roi.x + (*it2).roi.width))
             {
                 //checking y vector.
-                if ( prev_Y >(*it2).roi.y && prev_Y < ((*it2).roi.y + (*it2).roi.height))
+                if ( (prev_Y >(*it2).roi.y) && (prev_Y < ((*it2).roi.y + (*it2).roi.height)))
                 {          
-                    int boxId = it2->boxID;
-                    double confidence = it2->confidence;         
-                    prev_bBox_matching_checking.insert(pair<int, double>(boxId, confidence));
-                    
+                    bBox_prev = it2->boxID;                   
                 }
-            }
+            }          
         }
         
-        // checking if the keypoints have more than 1 box to be considered.
-        if ( prev_bBox_matching_checking.size() >= 1)
-        {
-            gr_conf = 0;
-            for (auto it3 = prev_bBox_matching_checking.begin(); it3 != prev_bBox_matching_checking.end(); it3++)
-            {
-                if (it3-> second > gr_conf)
-                {
-                    bBox_prev = it3 -> first;
-                    gr_conf = it3-> second;
-                }               
-                
-            }
-        }
-
-        else
-        {
-            bBox_prev = 0;
-        }
-        
-        //-----------------------------------------------------------------------------------------------------------
-        //                         correponding the keypoint and Bounding Box on the Current frame
-        //-----------------------------------------------------------------------------------------------------------
-
-        //Getting pixel coordinates on current frame 
-        double curr_X = currFrame.keypoints.at(it1->trainIdx).pt.x ;
-        double curr_Y = currFrame.keypoints.at(it1->trainIdx).pt.y ;
-
-        // creating vector to store the bbox that could be the correspondent to take decision on a further step
-        map<int, double> curr_bBox_matching_checking; // 
-
-        // iterating over boundingBoxes to check if the points is inside of box , if have more than 1 box for the same points
-        // the one with the greatest confidence will get the keypoint.
-        for(auto it4 = currFrame.boundingBoxes.begin(); it4 != currFrame.boundingBoxes.end(); it4++)
-        {
-      
+        for(auto it3 = currFrame.boundingBoxes.begin(); it3 != currFrame.boundingBoxes.end(); it3++)
+        {         
             //checking x vector.
-            if ( curr_X >(*it4).roi.x && curr_X < ((*it4).roi.x + (*it4).roi.width))
+            if ( curr_X >(*it3).roi.x && curr_X < ((*it3).roi.x + (*it3).roi.width))
             {
                 //checking y vector.
-                if ( curr_Y >(*it4).roi.y && curr_Y < ((*it4).roi.y + (*it4).roi.height))
+                if ( (curr_Y >(*it3).roi.y) && (curr_Y < ((*it3).roi.y + (*it3).roi.height)))
                 {          
-                    int boxId_curr = it4->boxID;
-                    double confidence_curr = it4->confidence;         
-                    curr_bBox_matching_checking.insert(pair<int, double>(boxId_curr, confidence_curr));
-
-
+                    bBox_curr = it3->boxID;
                 }
-            }
-        }
-     
-        
-        // checking if the keypoints have more than 1 box to be considered.
-        if ( curr_bBox_matching_checking.size() >= 1)
-        {
-            gr_conf = 0;
-            for (auto it5 = curr_bBox_matching_checking.begin(); it5 != curr_bBox_matching_checking.end(); it5++)
-            {
-                if (it5-> second > gr_conf)
-                {
-                    bBox_curr = it5 -> first;
-                    gr_conf = it5-> second;
-                }               
-                
-            }
-        }
-        else
-        {
-            bBox_curr = 0;
+            }           
         }
 
         final_result[bBox_curr].push_back(bBox_prev);
-
+      
     } // eol loop the mathes vector
-
+    
     // storing in bbBestMatches the pairs of the matching bounding boxes < previous , current >
 
     //cout << "the size of final vector of bbmatches is : " << final_result.size()<<endl;
     int bbox_current = 0;
-    for(int it6 = 0 ; it6< final_result.size() ; it6++ )
+    for(int it4 = 0 ; it4< final_result.size() ; it4++ )
     {
-        int bBox_matching_prev = FindVectorOccurrences(final_result[it6]);
+        int bBox_matching_prev = FindVectorOccurrences(final_result[it4]);
         bbBestMatches.insert(pair<int, int>(bBox_matching_prev, bbox_current));
         //cout << bbox_current << ","<< bBox_matching_prev << endl;
         bbox_current ++;
     }
-
 }
 
-
+// stackoverflow solution https://stackoverflow.com/questions/2488941/find-which-numbers-appears-most-in-a-vector/55478213#55478213
 int FindVectorOccurrences(vector<int> value)
 { 
     int index = 0;
