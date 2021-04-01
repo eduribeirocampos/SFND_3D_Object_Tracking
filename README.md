@@ -1,8 +1,8 @@
 [//]: # (Image References)
  
 [image1]: ./images/CAS_Systems.jpg
-[image2]: ./210330_output/Object_Detector_2D/img0_ObjectDetection2D.jpg
-[image3]: ./210330_output/Lidar_ROI_3D_View/img0_LIDAR_ROI.jpg
+[image2]: ./images/img0_ObjectDetection2D.jpg
+[image3]: ./images/Lidar_ROI_3D.png
 [image4]: ./images/Lidar_Cluster.png
 [image5]: ./images/Detector_AKAZE.jpg
 [image6]: ./images/Extract_descriptor.jpg
@@ -11,13 +11,18 @@
 [image9]: ./images/camera1_ttc.png
 [image10]: ./images/camera2_ttc.png
 [image11]: ./images/camera3_ttc.png
-[image12]: ./images/Mathing_Detector_FAST_Descriptor_BRIEF.gif
-[image13]: ./images/Detector_SIFT.gif
+[image12]: ./images/course_code_structure2.png
+[image13]: ./images/Matching_Bounding_Boxes_2.png 
+[image14]: ./images/Lidar_xmin_measurement.png
+[image15]: ./plots/LIDAR_TTC_Evaluation.png
+[image16]: ./plots/LIDAR_TTC_Evaluation.png
+[image17]: ./plots/LIDAR_TTC_Evaluation.png
+[image18]: ./images/Descriptor_BRIEF_Detectors_evaluation.png
 
-
-
+### Eduardo Ribeiro de Campos - March/2021.
 
 # SFND 3D Object Tracking
+#### UDACITY - Sensor fusion Nano degree - Camera course.
 
 
 ## Overview
@@ -38,9 +43,6 @@ The goal is dentify the most suitable detector/descriptor combination for TTC (t
 In this project we will implement the schematic below.
 
 The mains taks it is available in [rubric](https://review.udacity.com/#!/rubrics/2550/view) file.
-
-
-
 
 
 ## Main Files 
@@ -78,8 +80,8 @@ The orange rectangle was the Midterm Project from the Camera course. In this [re
 
 The blue rectangles is the new challenges that was implemented to achieve the objective that is Calculate the TTC.
 
-<img src="images/course_code_structure.png" width="779" height="414" />
-
+![alt text | align="middle"][image12]
+image source:UDACITY Sensor fusion Nanodegree Class.
 
 ### 1. Load images into ring buffer:
 
@@ -106,12 +108,13 @@ and used on the main [code](src/FinalProject_Camera.cpp) at line 241.
 Implemented on the file [camFusion_Student.cpp](src/camFusion_Student.cpp) from lines 21 to 130.And used on the main [code](src/FinalProject_Camera.cpp) at line 252.
 The next image show the example of the results.
 
+
 ![alt text |width=250px | align="middle"][image3]  
 
 In this [folder](210330_output/Lidar_ROI_3D_View/) you find the results for all Lidar point cloud dataset.
 
-Interminal it is possible check the partial results.
-![alt text |width=250px | align="middle"][image4]
+In terminal is possible check the partial results. attention to last column that shows the quantity of points remained after cropp the dataset, it is also identify that in the image 19 the Bounding Box Id n.1 is our preceding Car.
+
 
 More details is available on file: [ObjectDetc2D_lidar_ROI.txt](./210330_output/ObjectDetc2D_lidar_ROI.txt)
 
@@ -163,7 +166,7 @@ The `FindVectorOccurrences` function is available in [camFusion_Student.cpp](src
 
 The image below ilustrate the strategy.
 
-![alt text |width=250px | align="middle"][image1]  
+![alt text | align="middle"][image13]
 
 
 ### 9. Compute TTC on Object in front : ( Task FP.2 & Task FP.3 & FP.4 ).
@@ -176,7 +179,7 @@ Working with the dataset already cropped on the `step3`. The strategy here to av
 
 The next image shows schematically the strategy implemented.
 
-![alt text |width=250px | align="middle"][image8] 
+![alt text |width=250px | align="middle"][image14] 
 
 #### 9.2 - Associate Keypoint Correspondences with Bounding Boxes (Task FP.3).
 
@@ -208,21 +211,57 @@ image source:UDACITY Sensor fusion Nanodegree Class.
 
 ## Performances.
 
+All the evaluations presented was created on the file [project_Data_analysis](./project_Data_analysis.ipynb). the source file [Final_TTC_report.txt](210330_output/Final_TTC_report.txt) and is availabe on the folder [210330_output](210330_output/). The file is a `Jupyter Notebook` and the code was writen in python, and the main libraries [Pandas](https://pandas.pydata.org/) , [Matplotlib](https://matplotlib.org/) and [numpy](https://numpy.org/).
+
+
 ### FP5 - Performance Evaluation 1.
 
+This exercise is about conducting tests with the final project code, especially with regard to the Lidar part. Look for several examples where you have the impression that the Lidar-based TTC estimate is way off. Once you have found those, describe your observations and provide a sound argumentation why you think this happened.
+
+The task is complete once several examples (2-3) have been identified and described in detail. The assertion that the TTC is off should be based on manually estimating the distance to the rear of the preceding vehicle from a top view perspective of the Lidar points.
+
+The plot below shows the TTC calculation from the lidar data. In Blue we have the real TTC Calculated abd in Red we have a best fit line from a linear regression.
 
 
+![alt text |width=250px | align="middle"][image15] 
 
-### FP6 - Performance Evaluation 6.
+It is possible identify the TTC decreasing along each frame, but this is possible due the best fit line showing this tendency.
+
+On the frames 3,6 and 14 the TTC estimate are way off.The possible reasons could be due the vehicle dynamic  behavior for both cars the ego and the preceding vehicle. if we have a pitch and bouncing condition , the reference face of mesurement will oscilate. 
+
+Another possibility may be the oscillation of the light caused by the shadow of vehicles around, modifying the reflective properties and increasing the sensor noises
 
 
+### FP6 - Performance Evaluation 2.
+
+All the possible combination regard Detectors and Descriptors was performed and below we have the plots showing the results.
+
+![alt text |width=250px | align="middle"][image16] 
+
+It is possible identify that the detector is the principal variable and we have a minimum oscillation regar the descriptor chosen. the Detector AKAZE , FAST , SHITOMASI and SIFT seems  be the best choice because they have the lowest erros regard the best fit line generated by Lidar. The Detectors Harris Corner and ORB do not return reliable results and must be desconsidered.
+
+Below we have the plot with only the SHITOMASI detector showing the TTC values for the all descriptor options studied in this project. the lowest erros was presented for this Detector.
+
+![alt text |width=250px | align="middle"][image17]
 
 
 ## Conclusion.
     
-The BRIEF descriptor feature shows the best choice for the most combined Detectors also regard matching points between the scenes(MP.8). On the last plot we can see that ,the combined BRISK+BRIEF has the highest number of descriptor points detected on de preceding vehicle and the processing time is something around 50 mili seconds maximum. Depends of the application this combination could be chosen, but we have a group of combinations that are capable to process the descriptor points under the 25 millisecond. If the application request a high frequency to read the data and this quantity of the descriptors keypoints is enough sufficient, the combination of FAST+BRIEF could be chosen. The results of AKAZE+BRIEF and SIFT+BRIEF must be avoided because the elapsed time necessary is to large comparing with others and HARRIS + BRIEF also must be avoided, it has a good performance regard time , but the number of descriptor keypoints processed is very small.  
+For both studies Lidar and Camera was possible identify that we have noises on the interest value that we are calculating from this sensors. As it eas mentioned in the Classes, the Kalman Filter ( future - lesson) is a important tools to minimize this noises and increase the reliability for both sensors.
+
+Regard the Camera 2D features (Detectors & Descriptor), the plot below is the final graphic presented in [Camera - 2D Fetures Project](https://github.com/eduribeirocampos/CAMERA_2D_Feature_Matching), and after a lot of comparison and evaluation, it was possible affirm that BRIEF is de best Descriptor and we see the behavior of each Detector regard quantity of Keypoints identified and the elapsed time.  
+
+![alt text |width=250px | align="middle"][image18]
+
+
+Considering the results from TTC and process performances the pair `SHITOMASI + BRIEF` is a good Option for the CAS Systems.
+
+
+For Future studies , all the detectors and descriptor have a lot of parameters that must be investigated in order to make a fine tuning and maybe we can produce different conclusion.
+
+_____________________________________________________________________________________________________________
     
-    ## Dependencies for Running Locally
+## Dependencies for Running Locally
 * cmake >= 2.8
   * All OSes: [click here for installation instructions](https://cmake.org/install/)
 * make >= 4.1 (Linux, Mac), 3.81 (Windows)
