@@ -283,7 +283,7 @@ void computeTTCCamera(std::vector<cv::KeyPoint> &kptsPrev, std::vector<cv::KeyPo
         for (auto it2 = kptMatches.begin() + 1; it2 != kptMatches.end(); ++it2)
         { // inner kpt.-loop
 
-            double minDist = 150.0; // min. required distance
+            double minDist = 100.0; // min. required distance
 
             // get next keypoint and its matched partner in the prev. frame
             cv::KeyPoint kpInnerCurr = kptsCurr.at(it2->trainIdx);
@@ -328,7 +328,11 @@ void computeTTCCamera(std::vector<cv::KeyPoint> &kptsPrev, std::vector<cv::KeyPo
             filtered_dist_ratio.push_back(distRatios[it3]);
         }
     }
-
+    if (filtered_dist_ratio.size() == 0)
+    {
+        TTC = NAN;
+        return;
+    }  	
     std::sort(filtered_dist_ratio.begin(), filtered_dist_ratio.end());
     long medIndex = floor(filtered_dist_ratio.size() / 2.0);
     // compute median dist. ratio to remove outlier influence over the Filtered distance ratio vector.
@@ -349,10 +353,10 @@ void computeTTCLidar(std::vector<LidarPoint> &lidarPointsPrev,
     // auxiliary variables
     double dT = 1 / frameRate;  // time between two measurements in seconds
 
-    int A_Ycoord = -1;
-    int B_Ycoord = 0;
-    int C_Ycoord = 1;
-    int zone_width = 0.2; // in order to filter the points only in front of the car.   
+    float A_Ycoord = -0.5;
+    float B_Ycoord = 0;
+    float C_Ycoord = 0.5;
+    float zone_width = .15; // in order to filter the points only in front of the car.   
 
     float xwmin_prev_zA=1e8;
     float xwmin_prev_zB=1e8;
@@ -363,49 +367,53 @@ void computeTTCLidar(std::vector<LidarPoint> &lidarPointsPrev,
         // world coordinates
         float xw_prev = (*it1).x; // world position in m with x facing forward from sensor
         float yw_prev = (*it1).y; // world position in m with y facing left from sensor
-        
+      
         if ((yw_prev > A_Ycoord- zone_width/2) && (yw_prev < A_Ycoord + zone_width/2 ))
         {
             xwmin_prev_zA = xwmin_prev_zA<xw_prev ? xwmin_prev_zA : xw_prev;
         }
-        else if ((yw_prev > B_Ycoord- zone_width/2) && (yw_prev < B_Ycoord + zone_width/2 ))
+        if ((yw_prev > B_Ycoord- zone_width/2) && (yw_prev < B_Ycoord + zone_width/2 ))
         {
             xwmin_prev_zB = xwmin_prev_zB<xw_prev ? xwmin_prev_zB : xw_prev;
         }        
-        else if ((yw_prev > C_Ycoord- zone_width/2) && (yw_prev < C_Ycoord + zone_width/2 ))
+        if ((yw_prev > C_Ycoord- zone_width/2) && (yw_prev < C_Ycoord + zone_width/2 ))
         {
-            xwmin_prev_zC = xwmin_prev_zC<xw_prev ? xwmin_prev_zC : xw_prev;
+            xwmin_prev_zC = xwmin_prev_zC<xw_prev ? xwmin_prev_zC : xw_prev; 
         }   
     }
+    //cout <<xwmin_prev_zA << ","<< xwmin_prev_zB << ","<< xwmin_prev_zC<<endl;
 
 
     float xwmin_curr_zA=1e8;
     float xwmin_curr_zB=1e8;
     float xwmin_curr_zC=1e8;
 
-    for (auto it1 = lidarPointsPrev.begin(); it1 != lidarPointsPrev.end(); ++it1)
+    for (auto it2 = lidarPointsCurr.begin(); it2 != lidarPointsCurr.end(); ++it2)
     {
         // world coordinates
-        float xw_curr = (*it1).x; // world position in m with x facing forward from sensor
-        float yw_curr = (*it1).y; // world position in m with y facing left from sensor
+        float xw_curr = (*it2).x; // world position in m with x facing forward from sensor
+        float yw_curr = (*it2).y; // world position in m with y facing left from sensor
         
         if ((yw_curr > A_Ycoord- zone_width/2) && (yw_curr < A_Ycoord + zone_width/2 ))
         {
             xwmin_curr_zA = xwmin_curr_zA<xw_curr ? xwmin_curr_zA : xw_curr;
         }
-        else if ((yw_curr > B_Ycoord- zone_width/2) && (yw_curr < B_Ycoord + zone_width/2 ))
+        if ((yw_curr > B_Ycoord- zone_width/2) && (yw_curr < B_Ycoord + zone_width/2 ))
         {
             xwmin_curr_zB = xwmin_curr_zB<xw_curr ? xwmin_curr_zB : xw_curr;
         }        
-        else if ((yw_curr > C_Ycoord- zone_width/2) && (yw_curr < C_Ycoord + zone_width/2 ))
+        if ((yw_curr > C_Ycoord- zone_width/2) && (yw_curr < C_Ycoord + zone_width/2 ))
         {
             xwmin_curr_zC = xwmin_curr_zC<xw_curr ? xwmin_curr_zC : xw_curr;
         }   
-    }       
+    }    
+
+    //cout << xwmin_curr_zA << ","<< xwmin_curr_zB << ","<< xwmin_curr_zC<<endl;
+   
 
     double TTC_A = abs(xwmin_curr_zA * dT / (xwmin_prev_zA - xwmin_curr_zA));
     double TTC_B = abs(xwmin_curr_zB * dT / (xwmin_prev_zB - xwmin_curr_zB));
-    double TTC_C = abs(xwmin_curr_zB * dT / (xwmin_prev_zB - xwmin_curr_zB));
+    double TTC_C = abs(xwmin_curr_zC * dT / (xwmin_prev_zC - xwmin_curr_zC));
 
     // compute TTC from both measurements
     TTC = (TTC_A+TTC_B+TTC_C)/3;

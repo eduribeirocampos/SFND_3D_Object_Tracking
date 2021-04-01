@@ -474,6 +474,7 @@ void Object_Tracking3D(string InDetector , string InDescriptor,bool bVisObjectDe
                     //// TASK FP.2 -> compute time-to-collision based on Lidar data (implement -> computeTTCLidar)
                     double ttcLidar; 
                     computeTTCLidar(prevBB->lidarPoints, currBB->lidarPoints, sensorFrameRate, ttcLidar);
+                    cout << "#9.1 : TTC Lidar done" << endl;
 
                     //***********************************************************************************************
                     //                         clusterKptMatchesWithROI +  TTC - CAMERA
@@ -485,7 +486,9 @@ void Object_Tracking3D(string InDetector , string InDescriptor,bool bVisObjectDe
 
                     double ttcCamera;
                     clusterKptMatchesWithROI(*currBB, (dataBuffer.end() - 2)->keypoints, (dataBuffer.end() - 1)->keypoints, (dataBuffer.end() - 1)->kptMatches);                    
+                    cout << "#9.2 : Cluster Keypoints Matches with ROI done" << endl;
                     computeTTCCamera((dataBuffer.end() - 2)->keypoints, (dataBuffer.end() - 1)->keypoints, currBB->kptMatches, sensorFrameRate, ttcCamera);
+                    cout << "#9.3 : TTC Camera done" << endl;
                     //// EOF STUDENT ASSIGNMENT
                     //bVis = true;
                     if (bVisTTC)
