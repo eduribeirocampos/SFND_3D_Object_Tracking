@@ -85,7 +85,7 @@ image source:UDACITY Sensor fusion Nanodegree Class.
 
 ### 1. Load images into ring buffer:
 
-Implemented on the file [FinalProject_Camera.cpp](src/FinalProject_Camera.cpp) from lines 206 to 217.
+Implemented on the file [FinalProject_Camera.cpp](src/FinalProject_Camera.cpp) from lines 207 to 218.
 The image dataset is available [here](images/KITTI/2011_09_26/image_02/data/).
 
 ### 2. Detect & classify objects:
@@ -154,7 +154,7 @@ More details, please check the [repository](CAMERA_2D_Feature_Matching).
 
 ### 8. Track 3D Object Bounding Boxes : ( Task FP.1).
 
-Implemented on the file [camFusion_Student.cpp](src/camFusion_Student.cpp) from lines 393 to 447.And used on the main [code](src/FinalProject_Camera.cpp) at line 436.
+Implemented on the file [camFusion_Student.cpp](src/camFusion_Student.cpp) from lines 423 to 477.And used on the main [code](src/FinalProject_Camera.cpp) at line 436.
 
 The strategy here was iterate through Matches vector extracting the Bounding box ID that enclose the keypoints on the previous and current frame.
 It was created a vector named final_result with the same size of current frame Bounding boxes quantity.
@@ -162,7 +162,7 @@ So , the ID of the Bounding Boxes previous was storage in the final_result vecto
 
 To finish the function, it was used a complementary funcion named `FindVectorOccurrences` to count the occurrences of each ID Bounding boxes previous for each Bounding boxes current . The ID that had more occurences was storage in a  map structure with the pair < bBox previous , bBox Current> as the best Bounding boxes mathes.
 
-The `FindVectorOccurrences` function is available in [camFusion_Student.cpp](src/camFusion_Student.cpp) from lines 408 to 430 and was created followins this Stakeoverflow [answer](https://stackoverflow.com/questions/2488941/find-which-numbers-appears-most-in-a-vector/55478213#5547821)
+The `FindVectorOccurrences` function is available in [camFusion_Student.cpp](src/camFusion_Student.cpp) from lines 480 to 502 and was created followins this Stakeoverflow [answer](https://stackoverflow.com/questions/2488941/find-which-numbers-appears-most-in-a-vector/55478213#5547821)
 
 The image below ilustrate the strategy.
 
@@ -173,9 +173,9 @@ The image below ilustrate the strategy.
 
 #### 9.1 - Compute Lidar-based TTC: (Task FP.2).
 
-Implemented on the file [camFusion_Student.cpp](src/camFusion_Student.cpp) from lines 323 to 390.And used on the main [code](src/FinalProject_Camera.cpp) at line 476.
+Implemented on the file [camFusion_Student.cpp](src/camFusion_Student.cpp) from lines 349 to 420.And used on the main [code](src/FinalProject_Camera.cpp) at line 476.
 
-Working with the dataset already cropped on the `step3`. The strategy here to avoid outliers and increase the reliability was create 3 zones in order to track the x min coordinate value in the center of the Ego car Y=0 , 1m to left and 1m to right. The  setup of zone width is a variable at line 333.With the 3 Xmin values in previous and current frames we have calculated 3 TTC values. and the final result is te mean of those values.
+Working with the dataset already cropped on the `step3`. The strategy here to avoid outliers and increase the reliability was create 3 zones in order to track the x min coordinate value in the center of the Ego car Y=0 , 1m to left and 1m to right. The  setup of zone width is a variable at line 359. With the 3 Xmin values in previous and current frames we have calculated 3 TTC values. and the final result is te mean of those values.
 
 The next image shows schematically the strategy implemented.
 
@@ -184,7 +184,7 @@ The next image shows schematically the strategy implemented.
 #### 9.2 - Associate Keypoint Correspondences with Bounding Boxes (Task FP.3).
 
 
-Implemented on the file [camFusion_Student.cpp](src/camFusion_Student.cpp) from lines 222 to 264.And used on the main [code](src/FinalProject_Camera.cpp) at line 487.
+Implemented on the file [camFusion_Student.cpp](src/camFusion_Student.cpp) from lines 222 to 264.And used on the main [code](src/FinalProject_Camera.cpp) at line 488.
 
 The strategy here was as Step1, iterate through Matches vector. As 2 step we iterate through the bounding boxes. If the Keypoint is enclosed by the bounding box, we calculate the Euclidean distance between the pair (current and Previous) keypoints, and store the distances in a vector named `DistanceEuclideanCoord`, At the end, we calculate the mean and Standard Deviation from the Euclidean distances vector.
 
@@ -192,11 +192,11 @@ In the next Step ,we repeat the steps 1 and 2 . But considering as acceptable on
 
 #### 9.3 - Compute Camera-based TTC (Task FP.4).
 
-Implemented on the file [camFusion_Student.cpp](src/camFusion_Student.cpp) from lines 270 to 318.And used on the main [code](src/FinalProject_Camera.cpp) at line 488.
+Implemented on the file [camFusion_Student.cpp](src/camFusion_Student.cpp) from lines 270 to 346.And used on the main [code](src/FinalProject_Camera.cpp) at line 490.
 
 
 iterating through Matches vector, for each step we calculate the distance from the current point for all point of the vector individualy, for both current and previous 
-, if the distance is greather than the min acceptable (variable at line 285) ,we get a rate from current/previous, At the end of this step we calculate the mean and standar deviatiom , and have filtered the the values inside of the statistical acceptable interval and store the values inside a new vector named `filtered_dist_ratio`. As final step, we sort the vector and used the Median Value as impute to calculate the TTC.
+, if the distance is greather than the min acceptable (variable at line 286) ,we get a rate from current/previous, At the end of this step we calculate the mean and standar deviatiom , and have filtered the the values inside of the statistical acceptable interval and store the values inside a new vector named `filtered_dist_ratio`. As final step, we sort the vector and used the Median Value as impute to calculate the TTC.
 
 The computational vision techniques used to calculate distances in images are explained with the 2 pictures below.
 
